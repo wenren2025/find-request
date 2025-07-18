@@ -34,7 +34,7 @@ function findMatchingClick(requestDetails) {
   const timeWindow = 8000; // 8秒时间窗口
   const multiRequestWindow = 10000; // 10秒内允许多个请求匹配同一个点击
   
-  console.log(`[API捕获器] 🔍 查找匹配的点击记录 - tabId: ${requestDetails.tabId}, 当前时间: ${requestTime}`);
+  console.log(`[API捕获器] 🔍 查找匹配的点击记录 - 当前时间: ${requestTime}`);
   console.log(`[API捕获器] 📚 当前点击记录 (${clickRecords.length}):`, clickRecords.map(c => ({
     tabId: c.tabId, 
     time: c.timestamp, 
@@ -42,16 +42,17 @@ function findMatchingClick(requestDetails) {
     matchCount: c.matchCount || 0
   })));
   
-  // 查找时间窗口内的点击记录
+  // 查找时间窗口内的点击记录（取消tabId匹配限制）
   const matchingClicks = clickRecords.filter(click => {
     const timeDiff = requestTime - click.timestamp;
     const withinWindow = timeDiff >= 0 && timeDiff <= timeWindow;
-    const sameTab = click.tabId === requestDetails.tabId;
+    // 移除 tabId 匹配限制，任何标签页的点击都可以匹配
+    // const sameTab = click.tabId === requestDetails.tabId;
     
     // 允许在多请求时间窗口内的点击记录被重复使用
     const canReuse = !click.processed || (timeDiff <= multiRequestWindow);
     
-    return withinWindow && sameTab && canReuse;
+    return withinWindow && canReuse;
   });
   
   if (matchingClicks.length > 0) {
@@ -69,13 +70,15 @@ function findMatchingClick(requestDetails) {
       latestClick.processed = true;
     }
     
-    console.log('[API捕获器] 🎯 找到匹配的点击记录:', {
+    console.log('[API捕获器] 🎯 找到匹配的点击记录（无tabId限制）:', {
       clickTime: latestClick.timestamp,
       requestTime: requestTime,
       timeDiff: timeDiff,
       element: latestClick.element.tagName,
       matchCount: latestClick.matchCount,
-      processed: latestClick.processed
+      processed: latestClick.processed,
+      clickTabId: latestClick.tabId,
+      requestTabId: requestDetails.tabId
     });
     
     return latestClick;
@@ -288,10 +291,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case 'START_LISTENING_ALL_TABS':
       // 向所有标签页发送开始监听消息
       chrome.tabs.query({}, (tabs) => {
-        console.log('[API捕获器] 🎧 向所有标签页发送开始监听消息');
+        console.log(`[API捕获器] 🎧 向 ${tabs.length} 个标签页发送开始监听消息`);
         tabs.forEach(tab => {
-          chrome.tabs.sendMessage(tab.id, { type: 'START_LISTENING' }).catch(() => {
-            // 忽略错误
+          console.log(`[API捕获器] 📤 发送START_LISTENING到标签页 ${tab.id}: ${tab.url}`);
+          chrome.tabs.sendMessage(tab.id, { type: 'START_LISTENING' }).then(() => {
+            console.log(`[API捕获器] ✅ 标签页 ${tab.id} 监听已启动`);
+          }).catch(err => {
           });
         });
         
@@ -348,19 +353,34 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // 创建捕获窗口
 function createCaptureWindow(sendResponse) {
-  chrome.windows.create({
-    url: chrome.runtime.getURL('window.html'),
-    type: 'popup',
-    width: 320,
-    height: 640,
-    focused: true
-  }).then(window => {
-    captureWindow = window;
-    console.log('[API捕获器] ✅ 捕获窗口已创建');
-    sendResponse({ success: true });
-  }).catch(err => {
-    console.error('[API捕获器] ❌ 创建窗口失败:', err);
-    sendResponse({ success: false, error: err.message });
+  // 获取当前屏幕信息
+  chrome.system.display.getInfo((displays) => {
+    const primaryDisplay = displays.find(d => d.isPrimary) || displays[0];
+    const screenWidth = primaryDisplay.workArea.width;
+    const screenHeight = primaryDisplay.workArea.height;
+    
+    // 计算右上角位置
+    const windowWidth = 320;
+    const windowHeight = 360;
+    const left = screenWidth - windowWidth - 20; // 距离右边缘20px
+    const top = 20; // 距离顶部20px
+    
+    chrome.windows.create({
+      url: chrome.runtime.getURL('window.html'),
+      type: 'popup',
+      width: windowWidth,
+      height: windowHeight,
+      focused: true,
+      left: left,
+      top: top
+    }).then(window => {
+      captureWindow = window;
+      console.log('[API捕获器] ✅ 捕获窗口已创建');
+      sendResponse({ success: true });
+    }).catch(err => {
+      console.error('[API捕获器] ❌ 创建窗口失败:', err);
+      sendResponse({ success: false, error: err.message });
+    });
   });
 }
 
@@ -388,12 +408,26 @@ chrome.action.onClicked.addListener(async (tab) => {
       }
     }
     
+    // 获取屏幕信息来计算右上角位置
+    const displays = await new Promise((resolve) => {
+      chrome.system.display.getInfo(resolve);
+    });
+    
+    const primaryDisplay = displays.find(d => d.isPrimary) || displays[0];
+    const screenWidth = primaryDisplay.workArea.width;
+    const windowWidth = 320;
+    const windowHeight = 360;
+    const left = screenWidth - windowWidth - 20; // 距离右边缘20px
+    const top = 20; // 距离顶部20px
+    
     captureWindow = await chrome.windows.create({
       url: 'window.html',
       type: 'popup',
-      width: 320,
-      height: 640,
-      focused: true
+      width: windowWidth,
+      height: windowHeight,
+      focused: true,
+      left: left,
+      top: top
     });
     
     console.log('[API捕获器] ✅ 独立窗口已创建');
@@ -420,5 +454,21 @@ chrome.storage.local.get(['capturedRequests', 'isListening']).then(result => {
 
 // 定期清理过期的点击记录
 setInterval(cleanExpiredClicks, 5000); // 每5秒清理一次
+
+// 定期报告状态（调试用）
+setInterval(() => {
+  console.log(`[API捕获器] 💓 Background Script状态报告:`);
+  console.log(`  - 监听状态: ${isListening}`);
+  console.log(`  - 点击记录数量: ${clickRecords.length}`);
+  console.log(`  - 捕获请求数量: ${allCapturedRequests.length}`);
+  if (clickRecords.length > 0) {
+    console.log(`  - 最近的点击记录:`, clickRecords.slice(-3).map(c => ({
+      tabId: c.tabId,
+      timestamp: c.timestamp,
+      processed: c.processed,
+      element: c.element.tagName
+    })));
+  }
+}, 15000); // 每15秒报告一次
 
 console.log('[API捕获器] 🎉 webRequest版本 Background Script初始化完成'); 

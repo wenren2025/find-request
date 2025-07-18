@@ -71,6 +71,11 @@ function initializeWindow() {
     if (response) {
       isListening = response.isListening;
       console.log('[API捕获器] 获取到监听状态:', isListening);
+      
+      // 如果监听已启动，显示提示
+      if (isListening) {
+        console.log('[API捕获器] 🎉 监听已自动启动，可以开始测试！');
+      }
     }
     updateUI();
     refreshRequests();

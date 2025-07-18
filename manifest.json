@@ -7,7 +7,8 @@
     "activeTab",
     "storage",
     "webNavigation",
-    "webRequest"
+    "webRequest",
+    "system.display"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -24,7 +25,8 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "API请求捕获器 - 点击打开捕获窗口"
+    "default_title": "API请求捕获器 - 点击打开捕获窗口",
+    "default_popup": "popup.html"
   },
   "icons": {
     "16": "icon16.png",

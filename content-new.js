@@ -2,6 +2,8 @@
   'use strict';
   
   console.log('[API捕获器] 🚀 webRequest版本 Content Script已加载');
+  console.log('[API捕获器] 📍 当前页面URL:', window.location.href);
+  console.log('[API捕获器] 📍 当前页面标题:', document.title);
   
   // 检查扩展上下文
   function isExtensionContextValid() {
@@ -19,6 +21,12 @@
   
   // 状态管理
   let isListening = false;
+  console.log('[API捕获器] 📊 初始监听状态:', isListening);
+  
+  // 定期报告状态（调试用）
+  setInterval(() => {
+    console.log(`[API捕获器] 💓 Content Script运行正常 - 监听状态: ${isListening}, 页面: ${window.location.href}`);
+  }, 10000); // 每10秒报告一次
   
   // 点击事件监听器
   function setupClickListener() {
