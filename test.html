@@ -3,21 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API捕获器测试页面</title>
+    <title>API请求捕获器 - 测试页面</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
-            background: #f5f5f5;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
         }
         
         .container {
             background: white;
+            border-radius: 12px;
             padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         }
         
         h1 {
@@ -26,18 +27,18 @@
             margin-bottom: 30px;
         }
         
-        .section {
+        .test-section {
             margin-bottom: 30px;
             padding: 20px;
-            background: #f8f9fa;
+            border: 1px solid #e9ecef;
             border-radius: 8px;
-            border-left: 4px solid #007bff;
+            background: #f8f9fa;
         }
         
-        .section h2 {
-            color: #007bff;
-            margin-top: 0;
+        .test-section h2 {
+            color: #495057;
             margin-bottom: 15px;
+            font-size: 18px;
         }
         
         .button-group {
@@ -47,39 +48,28 @@
             margin-bottom: 15px;
         }
         
-        .btn {
+        .test-btn {
             padding: 10px 20px;
             border: none;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 500;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
         }
         
-        .btn:hover {
+        .test-btn:hover {
             transform: translateY(-1px);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
         }
         
-        .btn-primary { background: #007bff; color: white; }
-        .btn-success { background: #28a745; color: white; }
-        .btn-warning { background: #ffc107; color: #333; }
-        .btn-danger { background: #dc3545; color: white; }
-        .btn-info { background: #17a2b8; color: white; }
-        .btn-secondary { background: #6c757d; color: white; }
+        .btn-get { background: #28a745; color: white; }
+        .btn-post { background: #007bff; color: white; }
+        .btn-put { background: #ffc107; color: #333; }
+        .btn-delete { background: #dc3545; color: white; }
         
-        .clickable-div {
-            background: #e9ecef;
-            padding: 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 10px 0;
-            transition: background 0.2s;
-        }
-        
-        .clickable-div:hover {
-            background: #dee2e6;
+        .form-section {
+            margin-top: 15px;
         }
         
         .form-group {
@@ -90,435 +80,327 @@
             display: block;
             margin-bottom: 5px;
             font-weight: 500;
+            color: #495057;
         }
         
-        input, textarea {
+        input, textarea, select {
             width: 100%;
             padding: 8px 12px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 14px;
+            box-sizing: border-box;
         }
         
-        .log-area {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
+        textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        
+        .submit-btn {
+            background: #17a2b8;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .submit-btn:hover {
+            background: #138496;
+        }
+        
+        .instructions {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 6px;
             padding: 15px;
-            margin-top: 15px;
-            max-height: 200px;
-            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        
+        .instructions h3 {
+            color: #0c5460;
+            margin-bottom: 10px;
+        }
+        
+        .instructions ol {
+            color: #0c5460;
+            margin-left: 20px;
+        }
+        
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 20px;
             font-family: monospace;
             font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
         }
-        
-        .log-entry {
-            margin-bottom: 5px;
-            padding: 2px 0;
-        }
-        
-        .log-success { color: #28a745; }
-        .log-error { color: #dc3545; }
-        .log-info { color: #17a2b8; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔍 API捕获器测试页面</h1>
+        <h1>🔍 API请求捕获器测试页面</h1>
         
-        <div class="section">
-            <h2>1. 基础按钮测试</h2>
-            <p>测试不同类型的按钮元素：</p>
+        <div class="instructions">
+            <h3>📋 使用说明</h3>
+            <ol>
+                <li>点击浏览器工具栏中的API捕获器扩展图标，打开独立窗口</li>
+                <li>在独立窗口中点击"开始监听"</li>
+                <li>返回此页面，点击下面的测试按钮</li>
+                <li>在独立窗口中查看捕获到的API请求</li>
+            </ol>
+        </div>
+        
+        <div class="test-section">
+            <h2>🚀 快速测试按钮</h2>
             <div class="button-group">
-                <button class="btn btn-primary" onclick="sendGetRequest()">GET请求</button>
-                <button class="btn btn-success" onclick="sendPostRequest()">POST请求</button>
-                <button class="btn btn-warning" onclick="sendPutRequest()">PUT请求</button>
-                <button class="btn btn-danger" onclick="sendDeleteRequest()">DELETE请求</button>
-                <button class="btn btn-info" onclick="sendFetchRequest()">Fetch请求</button>
-                <button class="btn btn-secondary" onclick="sendMultipleRequests()">多个请求</button>
+                <button class="test-btn btn-get" onclick="testGet()">GET 请求</button>
+                <button class="test-btn btn-post" onclick="testPost()">POST 请求</button>
+                <button class="test-btn btn-put" onclick="testPut()">PUT 请求</button>
+                <button class="test-btn btn-delete" onclick="testDelete()">DELETE 请求</button>
             </div>
         </div>
         
-        <div class="section">
-            <h2>2. 不同元素类型测试</h2>
-            <p>测试不同类型的可点击元素：</p>
-            <div class="button-group">
-                <input type="button" class="btn btn-primary" value="Input Button" onclick="sendJsonRequest()">
-                <input type="submit" class="btn btn-success" value="Submit Button" onclick="sendFormDataRequest(); return false;">
-                <div class="clickable-div" onclick="sendDelayedRequest()">可点击的DIV元素</div>
-                <span class="btn btn-info" onclick="sendXmlRequest()" style="display: inline-block;">Span按钮</span>
-                <a href="#" class="btn btn-warning" onclick="sendBinaryRequest(); return false;">链接按钮</a>
-            </div>
-        </div>
-        
-        <div class="section">
-            <h2>3. 表单提交测试</h2>
-            <p>测试表单相关的请求：</p>
-            <form id="testForm" onsubmit="handleFormSubmit(event)">
+        <div class="test-section">
+            <h2>📝 表单提交测试</h2>
+            <form onsubmit="testFormSubmit(event)">
                 <div class="form-group">
-                    <label for="username">用户名：</label>
-                    <input type="text" id="username" name="username" value="testuser">
+                    <label for="username">用户名:</label>
+                    <input type="text" id="username" name="username" value="testuser" required>
                 </div>
                 <div class="form-group">
-                    <label for="email">邮箱：</label>
-                    <input type="email" id="email" name="email" value="test@example.com">
+                    <label for="email">邮箱:</label>
+                    <input type="email" id="email" name="email" value="test@example.com" required>
                 </div>
                 <div class="form-group">
-                    <label for="message">消息：</label>
-                    <textarea id="message" name="message" rows="3">这是一条测试消息</textarea>
+                    <label for="message">消息:</label>
+                    <textarea id="message" name="message" placeholder="输入测试消息...">这是一个测试消息</textarea>
                 </div>
-                <div class="button-group">
-                    <button type="submit" class="btn btn-primary">提交表单</button>
-                    <button type="button" class="btn btn-secondary" onclick="sendAjaxForm()">Ajax提交</button>
-                </div>
+                <button type="submit" class="submit-btn">提交表单</button>
             </form>
         </div>
         
-        <div class="section">
-            <h2>4. 延迟和异步测试</h2>
-            <p>测试不同时间延迟的请求：</p>
+        <div class="test-section">
+            <h2>⚙️ 自定义请求测试</h2>
+            <div class="form-group">
+                <label for="customUrl">请求URL:</label>
+                <input type="text" id="customUrl" value="https://jsonplaceholder.typicode.com/posts/1" placeholder="输入API地址">
+            </div>
+            <div class="form-group">
+                <label for="customMethod">请求方法:</label>
+                <select id="customMethod">
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                    <option value="PATCH">PATCH</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="customData">请求数据 (JSON格式):</label>
+                <textarea id="customData" placeholder='{"key": "value"}'>{
+  "title": "测试标题",
+  "body": "测试内容",
+  "userId": 1
+}</textarea>
+            </div>
+            <button class="test-btn btn-post" onclick="testCustomRequest()">发送自定义请求</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔄 批量请求测试</h2>
             <div class="button-group">
-                <button class="btn btn-primary" onclick="sendImmediateRequest()">立即请求</button>
-                <button class="btn btn-success" onclick="sendDelayedRequest(1000)">1秒后请求</button>
-                <button class="btn btn-warning" onclick="sendDelayedRequest(3000)">3秒后请求</button>
-                <button class="btn btn-danger" onclick="sendDelayedRequest(8000)">8秒后请求</button>
-                <button class="btn btn-info" onclick="sendDelayedRequest(12000)">12秒后请求</button>
+                <button class="test-btn btn-get" onclick="testBatchRequests()">发送5个连续请求</button>
+                <button class="test-btn btn-post" onclick="testDelayedRequests()">发送延迟请求</button>
             </div>
         </div>
         
-        <div class="section">
-            <h2>5. 请求日志</h2>
-            <p>查看发送的请求记录：</p>
-            <button class="btn btn-secondary" onclick="clearLogs()">清空日志</button>
-            <div id="logArea" class="log-area">
-                <div class="log-entry log-info">准备开始测试...</div>
-            </div>
+        <div id="log" class="log">
+            <div>📝 请求日志将在这里显示...</div>
         </div>
     </div>
 
     <script>
-        // 日志记录函数
-        function addLog(message, type = 'info') {
-            const logArea = document.getElementById('logArea');
-            const logEntry = document.createElement('div');
-            logEntry.className = `log-entry log-${type}`;
-            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-            logArea.appendChild(logEntry);
-            logArea.scrollTop = logArea.scrollHeight;
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            logElement.innerHTML += `<div>[${time}] ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
         }
-        
-        function clearLogs() {
-            const logArea = document.getElementById('logArea');
-            logArea.innerHTML = '<div class="log-entry log-info">日志已清空</div>';
+
+        // 基础API测试
+        async function testGet() {
+            log('🔍 发送GET请求...');
+            try {
+                const response = await fetch('https://jsonplaceholder.typicode.com/posts/1');
+                const data = await response.json();
+                log('✅ GET请求成功: ' + JSON.stringify(data).substring(0, 100) + '...');
+            } catch (error) {
+                log('❌ GET请求失败: ' + error.message);
+            }
         }
-        
-        // 模拟API端点
-        const API_BASE = 'https://jsonplaceholder.typicode.com';
-        
-        // GET请求
-        function sendGetRequest() {
-            addLog('发送GET请求...', 'info');
-            
-            const xhr = new XMLHttpRequest();
-            xhr.open('GET', `${API_BASE}/posts/1`);
-            xhr.onload = function() {
-                if (xhr.status === 200) {
-                    addLog('GET请求成功: ' + xhr.status, 'success');
-                } else {
-                    addLog('GET请求失败: ' + xhr.status, 'error');
-                }
-            };
-            xhr.onerror = function() {
-                addLog('GET请求错误', 'error');
-            };
-            xhr.send();
-        }
-        
-        // POST请求
-        function sendPostRequest() {
-            addLog('发送POST请求...', 'info');
-            
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', `${API_BASE}/posts`);
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.onload = function() {
-                if (xhr.status === 201) {
-                    addLog('POST请求成功: ' + xhr.status, 'success');
-                } else {
-                    addLog('POST请求失败: ' + xhr.status, 'error');
-                }
-            };
-            xhr.onerror = function() {
-                addLog('POST请求错误', 'error');
-            };
-            
-            const data = JSON.stringify({
-                title: 'Test Post',
-                body: 'This is a test post from API捕获器',
-                userId: 1
-            });
-            xhr.send(data);
-        }
-        
-        // PUT请求
-        function sendPutRequest() {
-            addLog('发送PUT请求...', 'info');
-            
-            const xhr = new XMLHttpRequest();
-            xhr.open('PUT', `${API_BASE}/posts/1`);
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.onload = function() {
-                addLog('PUT请求完成: ' + xhr.status, 'success');
-            };
-            xhr.onerror = function() {
-                addLog('PUT请求错误', 'error');
-            };
-            
-            const data = JSON.stringify({
-                id: 1,
-                title: 'Updated Post',
-                body: 'This post has been updated',
-                userId: 1
-            });
-            xhr.send(data);
-        }
-        
-        // DELETE请求
-        function sendDeleteRequest() {
-            addLog('发送DELETE请求...', 'info');
-            
-            const xhr = new XMLHttpRequest();
-            xhr.open('DELETE', `${API_BASE}/posts/1`);
-            xhr.onload = function() {
-                addLog('DELETE请求完成: ' + xhr.status, 'success');
-            };
-            xhr.onerror = function() {
-                addLog('DELETE请求错误', 'error');
-            };
-            xhr.send();
-        }
-        
-        // Fetch请求
-        function sendFetchRequest() {
-            addLog('发送Fetch请求...', 'info');
-            
-            fetch(`${API_BASE}/users/1`)
-                .then(response => {
-                    if (response.ok) {
-                        addLog('Fetch请求成功: ' + response.status, 'success');
-                        return response.json();
-                    } else {
-                        addLog('Fetch请求失败: ' + response.status, 'error');
-                    }
-                })
-                .then(data => {
-                    if (data) {
-                        addLog('获取到用户数据: ' + data.name, 'info');
-                    }
-                })
-                .catch(error => {
-                    addLog('Fetch请求错误: ' + error.message, 'error');
-                });
-        }
-        
-        // 多个请求
-        function sendMultipleRequests() {
-            addLog('发送多个请求...', 'info');
-            
-            // 请求1
-            setTimeout(() => {
-                fetch(`${API_BASE}/posts/1`)
-                    .then(response => addLog('请求1完成: ' + response.status, 'success'))
-                    .catch(error => addLog('请求1错误: ' + error.message, 'error'));
-            }, 100);
-            
-            // 请求2
-            setTimeout(() => {
-                fetch(`${API_BASE}/posts/2`)
-                    .then(response => addLog('请求2完成: ' + response.status, 'success'))
-                    .catch(error => addLog('请求2错误: ' + error.message, 'error'));
-            }, 200);
-            
-            // 请求3
-            setTimeout(() => {
-                fetch(`${API_BASE}/posts/3`)
-                    .then(response => addLog('请求3完成: ' + response.status, 'success'))
-                    .catch(error => addLog('请求3错误: ' + error.message, 'error'));
-            }, 300);
-        }
-        
-        // JSON请求
-        function sendJsonRequest() {
-            addLog('发送JSON请求...', 'info');
-            
-            fetch(`${API_BASE}/posts`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    title: 'JSON Test',
-                    body: 'Testing JSON request',
-                    userId: 1,
-                    metadata: {
-                        source: 'API捕获器测试',
-                        timestamp: new Date().toISOString(),
-                        testData: {
-                            numbers: [1, 2, 3, 4, 5],
-                            boolean: true,
-                            nested: {
-                                key: 'value',
-                                array: ['a', 'b', 'c']
-                            }
-                        }
-                    }
-                })
-            })
-            .then(response => {
-                addLog('JSON请求完成: ' + response.status, 'success');
-                return response.json();
-            })
-            .then(data => {
-                addLog('JSON响应ID: ' + data.id, 'info');
-            })
-            .catch(error => {
-                addLog('JSON请求错误: ' + error.message, 'error');
-            });
-        }
-        
-        // FormData请求
-        function sendFormDataRequest() {
-            addLog('发送FormData请求...', 'info');
-            
-            const formData = new FormData();
-            formData.append('title', 'FormData Test');
-            formData.append('body', 'Testing FormData request');
-            formData.append('userId', '1');
-            formData.append('file', 'fake-file-content');
-            
-            fetch(`${API_BASE}/posts`, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                addLog('FormData请求完成: ' + response.status, 'success');
-            })
-            .catch(error => {
-                addLog('FormData请求错误: ' + error.message, 'error');
-            });
-        }
-        
-        // 延迟请求
-        function sendDelayedRequest(delay = 2000) {
-            addLog(`${delay}ms后发送请求...`, 'info');
-            
-            setTimeout(() => {
-                fetch(`${API_BASE}/posts/1`)
-                    .then(response => {
-                        addLog(`延迟请求完成: ${response.status}`, 'success');
+
+        async function testPost() {
+            log('📤 发送POST请求...');
+            try {
+                const response = await fetch('https://jsonplaceholder.typicode.com/posts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        title: '测试标题',
+                        body: '测试内容',
+                        userId: 1
                     })
-                    .catch(error => {
-                        addLog('延迟请求错误: ' + error.message, 'error');
-                    });
-            }, delay);
+                });
+                const data = await response.json();
+                log('✅ POST请求成功: ' + JSON.stringify(data));
+            } catch (error) {
+                log('❌ POST请求失败: ' + error.message);
+            }
         }
-        
-        // 立即请求
-        function sendImmediateRequest() {
-            addLog('立即发送请求...', 'info');
-            sendGetRequest();
+
+        async function testPut() {
+            log('📝 发送PUT请求...');
+            try {
+                const response = await fetch('https://jsonplaceholder.typicode.com/posts/1', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        id: 1,
+                        title: '更新的标题',
+                        body: '更新的内容',
+                        userId: 1
+                    })
+                });
+                const data = await response.json();
+                log('✅ PUT请求成功: ' + JSON.stringify(data));
+            } catch (error) {
+                log('❌ PUT请求失败: ' + error.message);
+            }
         }
-        
-        // XML请求
-        function sendXmlRequest() {
-            addLog('发送XML请求...', 'info');
-            
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', `${API_BASE}/posts`);
-            xhr.setRequestHeader('Content-Type', 'application/xml');
-            xhr.onload = function() {
-                addLog('XML请求完成: ' + xhr.status, 'success');
-            };
-            xhr.onerror = function() {
-                addLog('XML请求错误', 'error');
-            };
-            
-            const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
-                <post>
-                    <title>XML Test</title>
-                    <body>Testing XML request</body>
-                    <userId>1</userId>
-                </post>`;
-            xhr.send(xmlData);
+
+        async function testDelete() {
+            log('🗑️ 发送DELETE请求...');
+            try {
+                const response = await fetch('https://jsonplaceholder.typicode.com/posts/1', {
+                    method: 'DELETE'
+                });
+                log('✅ DELETE请求成功: Status ' + response.status);
+            } catch (error) {
+                log('❌ DELETE请求失败: ' + error.message);
+            }
         }
-        
-        // 二进制请求
-        function sendBinaryRequest() {
-            addLog('发送二进制请求...', 'info');
-            
-            const binaryData = new Uint8Array([72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100]);
-            
-            fetch(`${API_BASE}/posts`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/octet-stream',
-                },
-                body: binaryData
-            })
-            .then(response => {
-                addLog('二进制请求完成: ' + response.status, 'success');
-            })
-            .catch(error => {
-                addLog('二进制请求错误: ' + error.message, 'error');
-            });
-        }
-        
-        // 表单提交
-        function handleFormSubmit(event) {
+
+        // 表单提交测试
+        async function testFormSubmit(event) {
             event.preventDefault();
-            addLog('表单提交...', 'info');
+            log('📋 发送表单数据...');
             
             const formData = new FormData(event.target);
-            const data = Object.fromEntries(formData);
+            const data = Object.fromEntries(formData.entries());
             
-            fetch(`${API_BASE}/posts`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => {
-                addLog('表单提交完成: ' + response.status, 'success');
-            })
-            .catch(error => {
-                addLog('表单提交错误: ' + error.message, 'error');
-            });
+            try {
+                const response = await fetch('https://jsonplaceholder.typicode.com/posts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                log('✅ 表单提交成功: ' + JSON.stringify(result));
+            } catch (error) {
+                log('❌ 表单提交失败: ' + error.message);
+            }
         }
-        
-        // Ajax表单提交
-        function sendAjaxForm() {
-            addLog('Ajax表单提交...', 'info');
+
+        // 自定义请求测试
+        async function testCustomRequest() {
+            const url = document.getElementById('customUrl').value;
+            const method = document.getElementById('customMethod').value;
+            const dataText = document.getElementById('customData').value;
             
-            const formData = new FormData(document.getElementById('testForm'));
+            log(`🎯 发送${method}请求到: ${url}`);
             
-            fetch(`${API_BASE}/posts`, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                addLog('Ajax表单提交完成: ' + response.status, 'success');
-            })
-            .catch(error => {
-                addLog('Ajax表单提交错误: ' + error.message, 'error');
-            });
+            try {
+                let requestOptions = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+                
+                if (method !== 'GET' && dataText.trim()) {
+                    requestOptions.body = dataText;
+                }
+                
+                const response = await fetch(url, requestOptions);
+                const data = await response.json();
+                log('✅ 自定义请求成功: ' + JSON.stringify(data).substring(0, 200) + '...');
+            } catch (error) {
+                log('❌ 自定义请求失败: ' + error.message);
+            }
         }
-        
+
+        // 批量请求测试
+        async function testBatchRequests() {
+            log('🔄 开始批量请求测试...');
+            
+            for (let i = 1; i <= 5; i++) {
+                try {
+                    const response = await fetch(`https://jsonplaceholder.typicode.com/posts/${i}`);
+                    const data = await response.json();
+                    log(`✅ 批量请求 ${i}/5 成功: ${data.title}`);
+                    await new Promise(resolve => setTimeout(resolve, 500)); // 延迟500ms
+                } catch (error) {
+                    log(`❌ 批量请求 ${i}/5 失败: ${error.message}`);
+                }
+            }
+        }
+
+        async function testDelayedRequests() {
+            log('⏱️ 开始延迟请求测试...');
+            
+            setTimeout(async () => {
+                try {
+                    const response = await fetch('https://jsonplaceholder.typicode.com/posts/1');
+                    const data = await response.json();
+                    log('✅ 延迟请求1成功 (2秒后)');
+                } catch (error) {
+                    log('❌ 延迟请求1失败: ' + error.message);
+                }
+            }, 2000);
+            
+            setTimeout(async () => {
+                try {
+                    const response = await fetch('https://jsonplaceholder.typicode.com/posts/2');
+                    const data = await response.json();
+                    log('✅ 延迟请求2成功 (5秒后)');
+                } catch (error) {
+                    log('❌ 延迟请求2失败: ' + error.message);
+                }
+            }, 5000);
+        }
+
         // 页面加载完成后的初始化
         document.addEventListener('DOMContentLoaded', function() {
-            addLog('测试页面加载完成', 'success');
-            addLog('请先安装并启动API捕获器插件', 'info');
-            addLog('然后点击各种按钮测试功能', 'info');
+            log('🎉 测试页面已加载完成，可以开始测试API捕获功能！');
+            
+            // 测试fetch是否被拦截
+            setTimeout(() => {
+                console.log('[测试页面] 🧪 测试fetch拦截 - 当前window.fetch:', typeof window.fetch);
+                console.log('[测试页面] 🧪 测试fetch拦截 - 是否为拦截函数:', window.fetch.toString().includes('API捕获器'));
+            }, 1000);
         });
     </script>
 </body>

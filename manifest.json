@@ -6,21 +6,25 @@
   "permissions": [
     "activeTab",
     "storage",
-    "webNavigation"
+    "webNavigation",
+    "webRequest"
+  ],
+  "host_permissions": [
+    "<all_urls>"
   ],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
       "js": ["content-new.js"],
-      "run_at": "document_idle"
+      "run_at": "document_start",
+      "all_frames": true
     }
   ],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "API请求捕获器"
+    "default_title": "API请求捕获器 - 点击打开捕获窗口"
   },
   "icons": {
     "16": "icon16.png",

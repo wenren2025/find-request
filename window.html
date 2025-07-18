@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>API请求捕获器</title>
+  <link rel="stylesheet" href="window.css">
+</head>
+<body>
+  <div class="app-container">
+    <div class="header">
+      <div class="controls">
+        <button id="startBtn" class="btn btn-primary">开始监听</button>
+        <button id="stopBtn" class="btn btn-secondary" disabled>停止监听</button>
+        <button id="clearBtn" class="btn btn-danger">清空</button>
+      </div>
+    </div>
+    
+    <div class="main-content">
+      <div id="requestsList" class="requests-list">
+        <div class="empty-state">
+          <p>暂无捕获的请求</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="window.js"></script>
+</body>
+</html> 
