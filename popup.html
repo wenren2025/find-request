@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>API请求捕获器</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>API请求捕获器</h1>
+      <div class="status" id="status">
+        <span class="status-text">未监听</span>
+      </div>
+    </div>
+    
+    <div class="controls">
+      <button id="startBtn" name="startBtn" class="btn btn-primary">开始监听</button>
+      <button id="stopBtn" name="stopBtn" class="btn btn-secondary" disabled>停止监听</button>
+      <button id="clearBtn" name="clearBtn" class="btn btn-danger">清空记录</button>
+    </div>
+    
+    <div class="panel-controls">
+      <button id="togglePanelBtn" name="togglePanelBtn" class="btn btn-info">显示浮动面板</button>
+    </div>
+    
+    <div class="stats">
+      <div class="stat-item">
+        <span class="stat-label">已捕获请求:</span>
+        <span class="stat-value" id="requestCount">0</span>
+      </div>
+    </div>
+    
+    <div class="requests-container">
+      <div class="section-header">
+        <h3>捕获的请求</h3>
+        <button id="refreshBtn" name="refreshBtn" class="btn btn-small">刷新</button>
+      </div>
+      
+      <div id="requestsList" class="requests-list">
+        <div class="empty-state">
+          <p>暂无捕获的请求</p>
+          <p class="hint">点击"开始监听"后，在网页上点击按钮即可捕获API请求</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 请求详情模态框 -->
+  <div id="requestModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>请求详情</h3>
+        <button class="close-btn" id="closeModal" name="closeModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="request-info">
+          <div class="info-group">
+            <span class="info-label">请求类型:</span>
+            <span id="modalType"></span>
+          </div>
+          <div class="info-group">
+            <span class="info-label">方法:</span>
+            <span id="modalMethod"></span>
+          </div>
+          <div class="info-group">
+            <span class="info-label">URL:</span>
+            <span id="modalUrl" class="url-text"></span>
+          </div>
+          <div class="info-group">
+            <span class="info-label">时间:</span>
+            <span id="modalTime"></span>
+          </div>
+          <div class="info-group">
+            <span class="info-label">触发元素:</span>
+            <span id="modalElement"></span>
+          </div>
+        </div>
+        
+        <div class="request-data">
+          <div class="data-header">
+            <span class="data-label">请求参数:</span>
+            <button id="copyDataBtn" name="copyDataBtn" class="btn btn-small">复制参数</button>
+          </div>
+          <div class="data-content">
+            <pre id="modalData"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html> 
