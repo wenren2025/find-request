@@ -32,6 +32,15 @@ function cleanExpiredClicks() {
 function findMatchingClick(requestDetails) {
   const requestTime = Date.now();
   const timeWindow = 8000; // 8秒时间窗口
+  const multiRequestWindow = 10000; // 10秒内允许多个请求匹配同一个点击
+  
+  console.log(`[API捕获器] 🔍 查找匹配的点击记录 - tabId: ${requestDetails.tabId}, 当前时间: ${requestTime}`);
+  console.log(`[API捕获器] 📚 当前点击记录 (${clickRecords.length}):`, clickRecords.map(c => ({
+    tabId: c.tabId, 
+    time: c.timestamp, 
+    processed: c.processed, 
+    matchCount: c.matchCount || 0
+  })));
   
   // 查找时间窗口内的点击记录
   const matchingClicks = clickRecords.filter(click => {
@@ -39,7 +48,10 @@ function findMatchingClick(requestDetails) {
     const withinWindow = timeDiff >= 0 && timeDiff <= timeWindow;
     const sameTab = click.tabId === requestDetails.tabId;
     
-    return withinWindow && sameTab && !click.processed;
+    // 允许在多请求时间窗口内的点击记录被重复使用
+    const canReuse = !click.processed || (timeDiff <= multiRequestWindow);
+    
+    return withinWindow && sameTab && canReuse;
   });
   
   if (matchingClicks.length > 0) {
@@ -48,19 +60,28 @@ function findMatchingClick(requestDetails) {
       current.timestamp > latest.timestamp ? current : latest
     );
     
-    // 标记为已处理
-    latestClick.processed = true;
+    // 增加匹配计数，但不立即标记为已处理
+    latestClick.matchCount = (latestClick.matchCount || 0) + 1;
+    
+    // 只有在超过多请求时间窗口后才标记为已处理
+    const timeDiff = requestTime - latestClick.timestamp;
+    if (timeDiff > multiRequestWindow) {
+      latestClick.processed = true;
+    }
     
     console.log('[API捕获器] 🎯 找到匹配的点击记录:', {
       clickTime: latestClick.timestamp,
       requestTime: requestTime,
-      timeDiff: requestTime - latestClick.timestamp,
-      element: latestClick.element.tagName
+      timeDiff: timeDiff,
+      element: latestClick.element.tagName,
+      matchCount: latestClick.matchCount,
+      processed: latestClick.processed
     });
     
     return latestClick;
   }
   
+  console.log('[API捕获器] ⏰ 未找到匹配的点击记录');
   return null;
 }
 
@@ -330,8 +351,8 @@ function createCaptureWindow(sendResponse) {
   chrome.windows.create({
     url: chrome.runtime.getURL('window.html'),
     type: 'popup',
-    width: 900,
-    height: 700,
+    width: 320,
+    height: 640,
     focused: true
   }).then(window => {
     captureWindow = window;
@@ -370,8 +391,8 @@ chrome.action.onClicked.addListener(async (tab) => {
     captureWindow = await chrome.windows.create({
       url: 'window.html',
       type: 'popup',
-      width: 900,
-      height: 700,
+      width: 320,
+      height: 640,
       focused: true
     });
     

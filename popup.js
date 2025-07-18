@@ -35,8 +35,8 @@ function openCaptureWindow() {
     chrome.windows.create({
       url: chrome.runtime.getURL('window.html'),
       type: 'popup',
-      width: 900,
-      height: 700
+      width: 320,
+      height: 640
     }).then(() => {
       window.close();
     }).catch(error => {

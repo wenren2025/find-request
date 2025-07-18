@@ -26,6 +26,41 @@ document.addEventListener('DOMContentLoaded', function() {
   setInterval(refreshRequests, 2000);
 });
 
+// 窗口关闭时自动停止监听
+window.addEventListener('beforeunload', function(event) {
+  console.log('[API捕获器] 窗口即将关闭，执行停止监听');
+  
+  // 如果当前正在监听，则停止监听
+  if (isListening) {
+    // 使用同步方式发送消息，确保在窗口关闭前完成
+    try {
+      chrome.runtime.sendMessage({
+        type: 'STOP_LISTENING_ALL_TABS'
+      });
+      console.log('[API捕获器] 窗口关闭时已发送停止监听消息');
+    } catch (err) {
+      console.error('[API捕获器] 窗口关闭时停止监听失败:', err);
+    }
+  }
+});
+
+// 监听窗口关闭事件（备用方案）
+window.addEventListener('unload', function(event) {
+  console.log('[API捕获器] 窗口已关闭');
+  
+  // 如果当前正在监听，则停止监听
+  if (isListening) {
+    try {
+      chrome.runtime.sendMessage({
+        type: 'STOP_LISTENING_ALL_TABS'
+      });
+      console.log('[API捕获器] 窗口关闭时已发送停止监听消息（unload）');
+    } catch (err) {
+      console.error('[API捕获器] 窗口关闭时停止监听失败（unload）:', err);
+    }
+  }
+});
+
 // 初始化窗口状态
 function initializeWindow() {
   console.log('[API捕获器] 初始化窗口状态');
