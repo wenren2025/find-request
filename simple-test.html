@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API捕获器 - 简单测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 8px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        
+        .btn:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+        
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #1e7e34; }
+        
+        .btn-warning { background: #ffc107; color: #333; }
+        .btn-warning:hover { background: #e0a800; }
+        
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+        
+        .log-area {
+            background: #1e1e1e;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+        
+        .success { color: #50fa7b; }
+        .error { color: #ff5555; }
+        .info { color: #8be9fd; }
+        
+        .instructions {
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .instructions h4 {
+            margin-top: 0;
+            color: #004085;
+        }
+        
+        .status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            font-size: 12px;
+        }
+        
+        .status.listening {
+            border-color: #28a745;
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 API请求捕获器 - 简单测试页面</h1>
+        
+        <div class="instructions">
+            <h4>📋 测试步骤：</h4>
+            <ol>
+                <li>点击浏览器工具栏中的插件图标</li>
+                <li>在弹出窗口中点击"开始监听"</li>
+                <li>回到此页面，点击下面的测试按钮</li>
+                <li>查看捕获窗口中是否显示了API请求</li>
+                <li>查看下方的日志区域了解详细信息</li>
+            </ol>
+        </div>
+        
+        <div class="test-section">
+            <h3>🧪 基础API测试</h3>
+            <p>点击按钮测试不同类型的API请求：</p>
+            
+            <button class="btn" onclick="testGet()">GET 请求</button>
+            <button class="btn btn-success" onclick="testPost()">POST 请求</button>
+            <button class="btn btn-warning" onclick="testPut()">PUT 请求</button>
+            <button class="btn btn-danger" onclick="testDelete()">DELETE 请求</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔄 XMLHttpRequest 测试</h3>
+            <p>测试传统的XMLHttpRequest方式：</p>
+            
+            <button class="btn" onclick="testXHRGet()">XHR GET</button>
+            <button class="btn btn-success" onclick="testXHRPost()">XHR POST</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>📝 表单提交测试</h3>
+            <p>测试表单提交触发的请求：</p>
+            
+            <form id="testForm" onsubmit="return testFormSubmit(event)">
+                <input type="hidden" name="test" value="form-data">
+                <input type="hidden" name="timestamp" value="">
+                <button type="submit" class="btn">提交表单</button>
+            </form>
+        </div>
+        
+        <div class="test-section">
+            <h3>🎯 连续请求测试</h3>
+            <p>测试一次点击触发多个请求的情况：</p>
+            
+            <button class="btn" onclick="testMultipleRequests()">发送多个请求</button>
+            <button class="btn btn-success" onclick="testDelayedRequest()">延迟请求 (2秒)</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>🧹 工具按钮</h3>
+            <button class="btn btn-warning" onclick="clearLog()">清空日志</button>
+            <button class="btn" onclick="testConnection()">测试连接</button>
+        </div>
+        
+        <div id="logArea" class="log-area">
+            <div class="log-entry info">[系统] 测试页面已加载，等待开始测试...</div>
+        </div>
+    </div>
+    
+    <div id="status" class="status">
+        状态: 等待开始监听
+    </div>
+
+    <script>
+        // 日志功能
+        function log(message, type = 'info') {
+            const logArea = document.getElementById('logArea');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `[${time}] ${message}`;
+            logArea.appendChild(entry);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+        
+        function clearLog() {
+            document.getElementById('logArea').innerHTML = 
+                '<div class="log-entry info">[系统] 日志已清空</div>';
+        }
+        
+        // 状态更新
+        function updateStatus(text, listening = false) {
+            const status = document.getElementById('status');
+            status.textContent = '状态: ' + text;
+            if (listening) {
+                status.classList.add('listening');
+            } else {
+                status.classList.remove('listening');
+            }
+        }
+        
+        // API测试函数
+        async function testGet() {
+            log('🔍 发送GET请求...', 'info');
+            try {
+                const response = await fetch('https://jsonplaceholder.typicode.com/posts/1');
+                const data = await response.json();
+                log('✅ GET请求成功: ' + data.title, 'success');
+                return data;
+            } catch (error) {
+                log('❌ GET请求失败: ' + error.message, 'error');
+                throw error;
+            }
+        }
+        
+        async function testPost() {
+            log('📤 发送POST请求...', 'info');
+            try {
+                const postData = {
+                    title: '测试标题 - ' + Date.now(),
+                    body: '这是一个测试请求',
+                    userId: 1
+                };
+                
+                const response = await fetch('https://jsonplaceholder.typicode.com/posts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(postData)
+                });
+                
+                const data = await response.json();
+                log('✅ POST请求成功: ID=' + data.id, 'success');
+                return data;
+            } catch (error) {
+                log('❌ POST请求失败: ' + error.message, 'error');
+                throw error;
+            }
+        }
+        
+        async function testPut() {
+            log('🔄 发送PUT请求...', 'info');
+            try {
+                const putData = {
+                    id: 1,
+                    title: '更新的标题',
+                    body: '更新的内容',
+                    userId: 1
+                };
+                
+                const response = await fetch('https://jsonplaceholder.typicode.com/posts/1', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(putData)
+                });
+                
+                const data = await response.json();
+                log('✅ PUT请求成功: ' + data.title, 'success');
+                return data;
+            } catch (error) {
+                log('❌ PUT请求失败: ' + error.message, 'error');
+                throw error;
+            }
+        }
+        
+        async function testDelete() {
+            log('🗑️ 发送DELETE请求...', 'info');
+            try {
+                const response = await fetch('https://jsonplaceholder.typicode.com/posts/1', {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    log('✅ DELETE请求成功', 'success');
+                } else {
+                    log('⚠️ DELETE请求返回状态: ' + response.status, 'info');
+                }
+                return response;
+            } catch (error) {
+                log('❌ DELETE请求失败: ' + error.message, 'error');
+                throw error;
+            }
+        }
+        
+        // XMLHttpRequest测试
+        function testXHRGet() {
+            log('🔍 发送XHR GET请求...', 'info');
+            
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', 'https://jsonplaceholder.typicode.com/posts/2');
+            
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    const data = JSON.parse(xhr.responseText);
+                    log('✅ XHR GET成功: ' + data.title, 'success');
+                } else {
+                    log('❌ XHR GET失败: ' + xhr.status, 'error');
+                }
+            };
+            
+            xhr.onerror = function() {
+                log('❌ XHR GET网络错误', 'error');
+            };
+            
+            xhr.send();
+        }
+        
+        function testXHRPost() {
+            log('📤 发送XHR POST请求...', 'info');
+            
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'https://jsonplaceholder.typicode.com/posts');
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            
+            const postData = JSON.stringify({
+                title: 'XHR测试标题',
+                body: 'XHR测试内容',
+                userId: 2
+            });
+            
+            xhr.onload = function() {
+                if (xhr.status === 201) {
+                    const data = JSON.parse(xhr.responseText);
+                    log('✅ XHR POST成功: ID=' + data.id, 'success');
+                } else {
+                    log('❌ XHR POST失败: ' + xhr.status, 'error');
+                }
+            };
+            
+            xhr.onerror = function() {
+                log('❌ XHR POST网络错误', 'error');
+            };
+            
+            xhr.send(postData);
+        }
+        
+        // 表单提交测试
+        function testFormSubmit(event) {
+            event.preventDefault();
+            log('📝 表单提交测试...', 'info');
+            
+            // 设置时间戳
+            document.querySelector('input[name="timestamp"]').value = Date.now();
+            
+            // 模拟表单数据提交
+            const formData = new FormData(event.target);
+            
+            fetch('https://jsonplaceholder.typicode.com/posts', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+              .then(data => {
+                  log('✅ 表单提交成功: ID=' + data.id, 'success');
+              }).catch(error => {
+                  log('❌ 表单提交失败: ' + error.message, 'error');
+              });
+            
+            return false;
+        }
+        
+        // 多请求测试
+        async function testMultipleRequests() {
+            log('🎯 发送多个连续请求...', 'info');
+            
+            try {
+                // 同时发送3个请求
+                const promises = [
+                    fetch('https://jsonplaceholder.typicode.com/posts/1'),
+                    fetch('https://jsonplaceholder.typicode.com/posts/2'),
+                    fetch('https://jsonplaceholder.typicode.com/posts/3')
+                ];
+                
+                const responses = await Promise.all(promises);
+                const data = await Promise.all(responses.map(r => r.json()));
+                
+                log(`✅ 多请求完成: 获取到${data.length}个响应`, 'success');
+            } catch (error) {
+                log('❌ 多请求失败: ' + error.message, 'error');
+            }
+        }
+        
+        // 延迟请求测试
+        function testDelayedRequest() {
+            log('⏰ 2秒后发送延迟请求...', 'info');
+            updateStatus('等待延迟请求...');
+            
+            setTimeout(async () => {
+                try {
+                    log('🚀 发送延迟请求', 'info');
+                    const response = await fetch('https://jsonplaceholder.typicode.com/posts/5');
+                    const data = await response.json();
+                    log('✅ 延迟请求成功: ' + data.title, 'success');
+                    updateStatus('延迟请求完成');
+                } catch (error) {
+                    log('❌ 延迟请求失败: ' + error.message, 'error');
+                    updateStatus('延迟请求失败');
+                }
+            }, 2000);
+        }
+        
+        // 测试连接
+        function testConnection() {
+            log('🔗 测试网络连接...', 'info');
+            
+            fetch('https://jsonplaceholder.typicode.com/posts/1', { method: 'HEAD' })
+                .then(response => {
+                    if (response.ok) {
+                        log('✅ 网络连接正常', 'success');
+                    } else {
+                        log('⚠️ 网络连接异常: ' + response.status, 'error');
+                    }
+                })
+                .catch(error => {
+                    log('❌ 网络连接失败: ' + error.message, 'error');
+                });
+        }
+        
+        // 页面加载完成
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🎉 简单测试页面已加载完成！', 'success');
+            log('💡 请先在插件窗口中点击"开始监听"，然后点击上面的测试按钮', 'info');
+            
+            // 检测插件是否可用
+            setTimeout(() => {
+                if (typeof chrome !== 'undefined' && chrome.runtime) {
+                    log('✅ 检测到Chrome扩展环境', 'success');
+                } else {
+                    log('⚠️ 未检测到Chrome扩展环境', 'info');
+                }
+            }, 1000);
+        });
+        
+        // 监听点击事件（用于调试）
+        document.addEventListener('click', function(event) {
+            if (event.target.tagName === 'BUTTON') {
+                console.log('[测试页面] 🖱️ 按钮被点击:', event.target.textContent);
+            }
+        });
+    </script>
+</body>
+</html> 

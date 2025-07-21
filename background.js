@@ -3,8 +3,11 @@ console.log('[API捕获器] 🚀 webRequest版本 Background Script已加载');
 // 数据存储
 let allCapturedRequests = [];
 let clickRecords = []; // 存储点击记录
-let isListening = false;
 let captureWindow = null;
+
+// 标签页监听状态管理
+let tabListeningStates = new Map(); // Map<tabId, {isListening: boolean, startTime: number}>
+let globalListening = false; // 全局监听开关
 
 // 点击记录数据结构
 // {
@@ -28,31 +31,65 @@ function cleanExpiredClicks() {
   }
 }
 
+// 检查标签页是否在监听状态
+function isTabListening(tabId) {
+  if (!globalListening) return false;
+  
+  const tabState = tabListeningStates.get(tabId);
+  return tabState && tabState.isListening;
+}
+
+// 获取标签页监听开始时间
+function getTabListeningStartTime(tabId) {
+  const tabState = tabListeningStates.get(tabId);
+  return tabState ? tabState.startTime : 0;
+}
+
 // 查找匹配的点击记录
 function findMatchingClick(requestDetails) {
   const requestTime = Date.now();
-  const timeWindow = 8000; // 8秒时间窗口
-  const multiRequestWindow = 10000; // 10秒内允许多个请求匹配同一个点击
+  const timeWindow = 15000; // 15秒时间窗口（扩大时间窗口）
+  const multiRequestWindow = 20000; // 20秒内允许多个请求匹配同一个点击
   
-  console.log(`[API捕获器] 🔍 查找匹配的点击记录 - 当前时间: ${requestTime}`);
-  console.log(`[API捕获器] 📚 当前点击记录 (${clickRecords.length}):`, clickRecords.map(c => ({
-    tabId: c.tabId, 
-    time: c.timestamp, 
-    processed: c.processed, 
-    matchCount: c.matchCount || 0
-  })));
+  // 检查请求的标签页是否在监听状态
+  if (!isTabListening(requestDetails.tabId)) {
+    console.log(`[API捕获器] ❌ 标签页 ${requestDetails.tabId} 未开启监听，忽略请求`);
+    return null;
+  }
   
-  // 查找时间窗口内的点击记录（取消tabId匹配限制）
+  const tabStartTime = getTabListeningStartTime(requestDetails.tabId);
+  console.log(`[API捕获器] 🔍 查找匹配的点击记录 - 标签页 ${requestDetails.tabId}, 监听开始时间: ${tabStartTime}`);
+  
+  // 如果没有点击记录，创建一个虚拟的点击记录（用于webRequest-only模式）
+  if (clickRecords.length === 0) {
+    console.log(`[API捕获器] 📝 没有点击记录，创建虚拟点击记录（webRequest模式）`);
+    const virtualClick = {
+      timestamp: tabStartTime,
+      element: {
+        tagName: 'VIRTUAL',
+        className: 'webRequest-mode',
+        id: 'auto-capture',
+        textContent: 'WebRequest Auto Capture'
+      },
+      pageUrl: requestDetails.url,
+      tabId: requestDetails.tabId,
+      processed: false,
+      virtual: true
+    };
+    clickRecords.push(virtualClick);
+  }
+  
+  // 只查找该标签页且在监听开始后的点击记录
   const matchingClicks = clickRecords.filter(click => {
     const timeDiff = requestTime - click.timestamp;
     const withinWindow = timeDiff >= 0 && timeDiff <= timeWindow;
-    // 移除 tabId 匹配限制，任何标签页的点击都可以匹配
-    // const sameTab = click.tabId === requestDetails.tabId;
+    const sameTab = click.tabId === requestDetails.tabId; // 恢复标签页匹配
+    const afterListeningStart = click.timestamp >= tabStartTime; // 确保点击在监听开始之后
     
     // 允许在多请求时间窗口内的点击记录被重复使用
     const canReuse = !click.processed || (timeDiff <= multiRequestWindow);
     
-    return withinWindow && canReuse;
+    return withinWindow && sameTab && afterListeningStart && canReuse;
   });
   
   if (matchingClicks.length > 0) {
@@ -70,15 +107,14 @@ function findMatchingClick(requestDetails) {
       latestClick.processed = true;
     }
     
-    console.log('[API捕获器] 🎯 找到匹配的点击记录（无tabId限制）:', {
+    console.log('[API捕获器] 🎯 找到匹配的点击记录:', {
       clickTime: latestClick.timestamp,
       requestTime: requestTime,
       timeDiff: timeDiff,
       element: latestClick.element.tagName,
       matchCount: latestClick.matchCount,
       processed: latestClick.processed,
-      clickTabId: latestClick.tabId,
-      requestTabId: requestDetails.tabId
+      tabId: latestClick.tabId
     });
     
     return latestClick;
@@ -171,7 +207,10 @@ function getUrlPath(url) {
 // webRequest API - 拦截请求
 chrome.webRequest.onBeforeRequest.addListener(
   function(details) {
-    if (!isListening) return;
+    // 检查全局监听状态和具体标签页状态
+    if (!globalListening || !isTabListening(details.tabId)) {
+      return;
+    }
     
     console.log('[API捕获器] 🌐 webRequest拦截到请求:', details.method, details.url, 'Type:', details.type);
     
@@ -249,7 +288,30 @@ chrome.webRequest.onBeforeRequest.addListener(
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('[API捕获器] 📨 Background收到消息:', message.type);
   
-  switch (message.type) {
+  // 确保sendResponse总是被调用
+  let responseHandled = false;
+  
+  const safeResponse = (response) => {
+    if (!responseHandled) {
+      responseHandled = true;
+      try {
+        sendResponse(response);
+      } catch (err) {
+        console.warn('[API捕获器] ⚠️ 发送响应失败:', err);
+      }
+    }
+  };
+  
+  // 设置超时保护
+  const responseTimeout = setTimeout(() => {
+    if (!responseHandled) {
+      console.warn('[API捕获器] ⏰ 消息处理超时:', message.type);
+      safeResponse({ success: false, error: 'Message handling timeout' });
+    }
+  }, 10000); // 10秒超时
+  
+  try {
+    switch (message.type) {
     case 'CLICK_RECORDED':
       // 记录点击事件
       const clickRecord = {
@@ -264,12 +326,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       // 清理过期记录
       cleanExpiredClicks();
       
-      sendResponse({ success: true });
+      clearTimeout(responseTimeout);
+      safeResponse({ success: true });
       break;
       
     case 'GET_ALL_REQUESTS':
       console.log('[API捕获器] 📨 返回所有请求，数量:', allCapturedRequests.length);
-      sendResponse({ requests: allCapturedRequests });
+      clearTimeout(responseTimeout);
+      safeResponse({ requests: allCapturedRequests });
       break;
       
     case 'CLEAR_ALL_REQUESTS':
@@ -277,82 +341,216 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       clickRecords = [];
       chrome.storage.local.set({ capturedRequests: [] }).then(() => {
         console.log('[API捕获器] 🧹 已清空所有数据');
-        sendResponse({ success: true });
+        clearTimeout(responseTimeout);
+        safeResponse({ success: true });
       }).catch(err => {
         console.error('[API捕获器] ❌ 清空失败:', err);
-        sendResponse({ success: false, error: err.message });
+        clearTimeout(responseTimeout);
+        safeResponse({ success: false, error: err.message });
       });
-      return true;
+      break;
       
     case 'GET_LISTENING_STATUS':
-      sendResponse({ isListening: isListening });
+      // 获取当前活动标签页的监听状态
+      chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+        if (tabs.length > 0) {
+          const activeTabId = tabs[0].id;
+          const isActiveTabListening = isTabListening(activeTabId);
+          clearTimeout(responseTimeout);
+          safeResponse({ 
+            isListening: isActiveTabListening,
+            globalListening: globalListening,
+            activeTabId: activeTabId,
+            listeningTabs: Array.from(tabListeningStates.keys())
+          });
+        } else {
+          clearTimeout(responseTimeout);
+          safeResponse({ 
+            isListening: false,
+            globalListening: globalListening,
+            listeningTabs: Array.from(tabListeningStates.keys())
+          });
+        }
+      });
       break;
       
     case 'START_LISTENING_ALL_TABS':
-      // 向所有标签页发送开始监听消息
-      chrome.tabs.query({}, (tabs) => {
-        console.log(`[API捕获器] 🎧 向 ${tabs.length} 个标签页发送开始监听消息`);
-        tabs.forEach(tab => {
-          console.log(`[API捕获器] 📤 发送START_LISTENING到标签页 ${tab.id}: ${tab.url}`);
-          chrome.tabs.sendMessage(tab.id, { type: 'START_LISTENING' }).then(() => {
-            console.log(`[API捕获器] ✅ 标签页 ${tab.id} 监听已启动`);
-          }).catch(err => {
-          });
+      // 只向当前激活的标签页发送开始监听消息
+      chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+        if (tabs.length === 0) {
+          console.log('[API捕获器] ❌ 未找到活动标签页');
+          clearTimeout(responseTimeout);
+          safeResponse({ success: false, error: 'No active tab found' });
+          return;
+        }
+        
+        const activeTab = tabs[0];
+        const tabUrl = activeTab.url || 'about:blank';
+        console.log(`[API捕获器] 🎧 向活动标签页 ${activeTab.id} 发送开始监听消息: ${tabUrl}`);
+        
+        // 检查标签页URL是否支持content script
+        if (!activeTab.url || 
+            tabUrl.startsWith('chrome://') || 
+            tabUrl.startsWith('chrome-extension://') || 
+            tabUrl.startsWith('edge://') || 
+            tabUrl.startsWith('about:') ||
+            tabUrl.startsWith('moz-extension://') ||
+            tabUrl === 'about:blank') {
+          console.log(`[API捕获器] ❌ 标签页 ${activeTab.id} 不支持content script: ${tabUrl}`);
+          clearTimeout(responseTimeout);
+          safeResponse({ success: false, error: 'This page does not support content scripts. Please navigate to a regular website.' });
+          return;
+        }
+        
+        // 先尝试注入content script（以防万一没有加载）
+        chrome.scripting.executeScript({
+          target: { tabId: activeTab.id },
+          files: ['content-new.js']
+        }).then(() => {
+          console.log(`[API捕获器] ✅ Content script已注入到标签页 ${activeTab.id}`);
+          
+          // 等待一小段时间让content script初始化
+          setTimeout(() => {
+            sendMessageToTab(activeTab.id);
+          }, 500);
+          
+        }).catch(scriptError => {
+          console.log(`[API捕获器] ⚠️ 注入content script失败，尝试直接发送消息:`, scriptError);
+          sendMessageToTab(activeTab.id);
         });
         
-        isListening = true;
-        chrome.storage.local.set({ isListening: true }).then(() => {
-          console.log('[API捕获器] ✅ 监听状态已保存');
-          sendResponse({ success: true });
-        }).catch(err => {
-          console.error('[API捕获器] ❌ 保存监听状态失败:', err);
-          sendResponse({ success: false, error: err.message });
-        });
+        function sendMessageToTab(tabId) {
+          // 设置超时机制
+          const messageTimeout = setTimeout(() => {
+            console.warn(`[API捕获器] ⏰ 向标签页 ${tabId} 发送消息超时，切换到webRequest模式`);
+            activateWebRequestMode(tabId);
+          }, 3000); // 3秒超时
+          
+          chrome.tabs.sendMessage(tabId, { type: 'START_LISTENING' }).then(() => {
+            clearTimeout(messageTimeout);
+            console.log(`[API捕获器] ✅ 标签页 ${tabId} 监听已启动`);
+            
+            // 设置该标签页的监听状态
+            tabListeningStates.set(tabId, {
+              isListening: true,
+              startTime: Date.now()
+            });
+            
+            globalListening = true;
+            
+            chrome.storage.local.set({ 
+              isListening: true,
+              activeListeningTabId: tabId 
+            }).then(() => {
+              console.log('[API捕获器] ✅ 监听状态已保存');
+              clearTimeout(responseTimeout);
+              safeResponse({ success: true, activeTabId: tabId });
+            }).catch(err => {
+              console.error('[API捕获器] ❌ 保存监听状态失败:', err);
+              clearTimeout(responseTimeout);
+              safeResponse({ success: false, error: err.message });
+            });
+            
+          }).catch(err => {
+            clearTimeout(messageTimeout);
+            console.error(`[API捕获器] ❌ 向标签页 ${tabId} 发送消息失败:`, err);
+            activateWebRequestMode(tabId);
+          });
+        }
+        
+        function activateWebRequestMode(tabId) {
+          // 如果发送消息失败，仍然设置监听状态（webRequest方式不依赖content script）
+          console.log(`[API捕获器] 🔄 Content script不可用，使用webRequest方式监听`);
+          
+          tabListeningStates.set(tabId, {
+            isListening: true,
+            startTime: Date.now()
+          });
+          
+          globalListening = true;
+          
+          chrome.storage.local.set({ 
+            isListening: true,
+            activeListeningTabId: tabId 
+          }).then(() => {
+            console.log('[API捕获器] ✅ 已启用webRequest监听模式');
+            clearTimeout(responseTimeout);
+            safeResponse({ 
+              success: true, 
+              activeTabId: tabId,
+              mode: 'webRequest',
+              warning: 'Content script unavailable, using webRequest mode only'
+            });
+          }).catch(err => {
+            console.error('[API捕获器] ❌ 保存监听状态失败:', err);
+            clearTimeout(responseTimeout);
+            safeResponse({ success: false, error: err.message });
+          });
+        }
       });
       return true;
       
     case 'STOP_LISTENING_ALL_TABS':
-      // 向所有标签页发送停止监听消息
-      chrome.tabs.query({}, (tabs) => {
-        console.log('[API捕获器] 🔇 向所有标签页发送停止监听消息');
-        tabs.forEach(tab => {
-          chrome.tabs.sendMessage(tab.id, { type: 'STOP_LISTENING' }).catch(() => {
-            // 忽略错误
+      // 停止所有标签页的监听
+      console.log('[API捕获器] 🔇 停止所有标签页监听');
+      
+      // 向所有正在监听的标签页发送停止消息
+      for (const [tabId, tabState] of tabListeningStates.entries()) {
+        if (tabState.isListening) {
+          chrome.tabs.sendMessage(tabId, { type: 'STOP_LISTENING' }).catch(() => {
+            console.log(`[API捕获器] 标签页 ${tabId} 可能已关闭`);
           });
-        });
-        
-        isListening = false;
-        chrome.storage.local.set({ isListening: false }).then(() => {
-          console.log('[API捕获器] ✅ 监听状态已保存');
-          sendResponse({ success: true });
-        }).catch(err => {
-          console.error('[API捕获器] ❌ 保存监听状态失败:', err);
-          sendResponse({ success: false, error: err.message });
-        });
+        }
+      }
+      
+      // 清空所有标签页监听状态
+      tabListeningStates.clear();
+      globalListening = false;
+      
+      chrome.storage.local.set({ 
+        isListening: false,
+        activeListeningTabId: null 
+      }).then(() => {
+        console.log('[API捕获器] ✅ 监听状态已清空');
+        clearTimeout(responseTimeout);
+        safeResponse({ success: true });
+      }).catch(err => {
+        console.error('[API捕获器] ❌ 保存监听状态失败:', err);
+        clearTimeout(responseTimeout);
+        safeResponse({ success: false, error: err.message });
       });
-      return true;
+      break;
       
     case 'OPEN_CAPTURE_WINDOW':
       if (captureWindow) {
         chrome.windows.update(captureWindow.id, { focused: true }).then(() => {
-          sendResponse({ success: true });
+          clearTimeout(responseTimeout);
+          safeResponse({ success: true });
         }).catch(() => {
-          createCaptureWindow(sendResponse);
+          createCaptureWindow(safeResponse, responseTimeout);
         });
       } else {
-        createCaptureWindow(sendResponse);
+        createCaptureWindow(safeResponse, responseTimeout);
       }
-      return true;
+      break;
       
     default:
       console.log('[API捕获器] ❓ 未知消息类型:', message.type);
-      sendResponse({ success: false, error: 'Unknown message type' });
+      clearTimeout(responseTimeout);
+      safeResponse({ success: false, error: 'Unknown message type' });
       break;
+    }
+  } catch (error) {
+    console.error('[API捕获器] ❌ 消息处理异常:', error);
+    clearTimeout(responseTimeout);
+    safeResponse({ success: false, error: error.message });
   }
+  
+  return true; // 表示异步响应
 });
 
 // 创建捕获窗口
-function createCaptureWindow(sendResponse) {
+function createCaptureWindow(sendResponse, responseTimeout = null) {
   // 获取当前屏幕信息
   chrome.system.display.getInfo((displays) => {
     const primaryDisplay = displays.find(d => d.isPrimary) || displays[0];
@@ -376,9 +574,11 @@ function createCaptureWindow(sendResponse) {
     }).then(window => {
       captureWindow = window;
       console.log('[API捕获器] ✅ 捕获窗口已创建');
+      if (responseTimeout) clearTimeout(responseTimeout);
       sendResponse({ success: true });
     }).catch(err => {
       console.error('[API捕获器] ❌ 创建窗口失败:', err);
+      if (responseTimeout) clearTimeout(responseTimeout);
       sendResponse({ success: false, error: err.message });
     });
   });
@@ -438,15 +638,27 @@ chrome.action.onClicked.addListener(async (tab) => {
 });
 
 // 初始化时加载数据
-chrome.storage.local.get(['capturedRequests', 'isListening']).then(result => {
+chrome.storage.local.get(['capturedRequests', 'isListening', 'activeListeningTabId']).then(result => {
   if (result.capturedRequests) {
     allCapturedRequests = result.capturedRequests;
     console.log('[API捕获器] 📂 加载了存储的请求:', allCapturedRequests.length);
   }
   
-  if (result.isListening !== undefined) {
-    isListening = result.isListening;
-    console.log('[API捕获器] 📂 加载了监听状态:', isListening);
+  if (result.isListening && result.activeListeningTabId) {
+    // 检查之前监听的标签页是否仍然存在
+    chrome.tabs.get(result.activeListeningTabId).then(tab => {
+      if (tab) {
+        console.log(`[API捕获器] 📂 恢复标签页 ${tab.id} 的监听状态`);
+        tabListeningStates.set(tab.id, {
+          isListening: true,
+          startTime: Date.now() // 重新设置开始时间
+        });
+        globalListening = true;
+      }
+    }).catch(() => {
+      console.log('[API捕获器] 📂 之前监听的标签页已不存在，重置状态');
+      chrome.storage.local.set({ isListening: false, activeListeningTabId: null });
+    });
   }
 }).catch(err => {
   console.error('[API捕获器] ❌ 加载存储数据失败:', err);
@@ -455,10 +667,25 @@ chrome.storage.local.get(['capturedRequests', 'isListening']).then(result => {
 // 定期清理过期的点击记录
 setInterval(cleanExpiredClicks, 5000); // 每5秒清理一次
 
+// 定期清理已关闭标签页的监听状态
+chrome.tabs.onRemoved.addListener((tabId) => {
+  if (tabListeningStates.has(tabId)) {
+    console.log(`[API捕获器] 🗑️ 清理已关闭标签页 ${tabId} 的监听状态`);
+    tabListeningStates.delete(tabId);
+    
+    // 如果没有标签页在监听，关闭全局监听
+    if (tabListeningStates.size === 0) {
+      globalListening = false;
+      chrome.storage.local.set({ isListening: false });
+    }
+  }
+});
+
 // 定期报告状态（调试用）
 setInterval(() => {
   console.log(`[API捕获器] 💓 Background Script状态报告:`);
-  console.log(`  - 监听状态: ${isListening}`);
+  console.log(`  - 全局监听状态: ${globalListening}`);
+  console.log(`  - 监听中的标签页: ${Array.from(tabListeningStates.keys()).join(', ')}`);
   console.log(`  - 点击记录数量: ${clickRecords.length}`);
   console.log(`  - 捕获请求数量: ${allCapturedRequests.length}`);
   if (clickRecords.length > 0) {

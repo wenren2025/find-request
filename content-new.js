@@ -26,7 +26,7 @@
   // 定期报告状态（调试用）
   setInterval(() => {
     console.log(`[API捕获器] 💓 Content Script运行正常 - 监听状态: ${isListening}, 页面: ${window.location.href}`);
-  }, 10000); // 每10秒报告一次
+  }, 30000); // 每30秒报告一次（降低频率）
   
   // 点击事件监听器
   function setupClickListener() {
@@ -38,19 +38,23 @@
       const element = event.target;
       const clickTime = Date.now();
       
-      console.log('[API捕获器] 🎯 检测到点击:', element.tagName, element.className || element.id);
+      console.log('[API捕获器] 🎯 检测到点击:', element.tagName, element.className || element.id || element.textContent?.substring(0, 20));
       
       // 获取元素信息
       const elementInfo = {
         tagName: element.tagName,
-        className: element.className,
-        id: element.id,
+        className: element.className || '',
+        id: element.id || '',
         textContent: element.textContent?.substring(0, 50) || '',
         type: element.type || '',
         name: element.name || '',
         href: element.href || '',
         onclick: !!element.onclick,
-        hasEventListeners: !!element.addEventListener
+        hasEventListeners: !!element.addEventListener,
+        // 添加更多元素识别信息
+        role: element.getAttribute('role') || '',
+        ariaLabel: element.getAttribute('aria-label') || '',
+        title: element.title || ''
       };
       
       // 发送点击信息到 Background Script
@@ -65,7 +69,7 @@
               tabId: null // 将由 Background Script 填充
             }
           }).then(() => {
-            console.log('[API捕获器] ✅ 点击信息已发送到Background');
+            console.log('[API捕获器] ✅ 点击信息已发送到Background - 元素:', elementInfo.tagName, elementInfo.className || elementInfo.id);
           }).catch(err => {
             console.log('[API捕获器] ❌ 发送点击信息失败:', err);
           });

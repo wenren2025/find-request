@@ -3,22 +3,473 @@
 <head>
   <meta charset="utf-8">
   <title>API请求捕获器</title>
-  <link rel="stylesheet" href="window.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      line-height: 1.4;
+      color: #333;
+      background: #f5f5f5;
+      overflow: hidden;
+    }
+    
+    .container {
+      height: 100vh;
+      background: white;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+    }
+    
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ff6b6b;
+    }
+    
+    .status-dot.listening {
+      background: #51cf66;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .controls {
+      padding: 12px 16px;
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid #eee;
+      flex-shrink: 0;
+    }
+    
+    .btn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex: 1;
+    }
+    
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+    
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .btn-primary {
+      background: #4c6ef5;
+      color: white;
+    }
+    
+    .btn-secondary {
+      background: #868e96;
+      color: white;
+    }
+    
+    .btn-danger {
+      background: #ff6b6b;
+      color: white;
+    }
+    
+    .stats {
+      padding: 10px 16px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #eee;
+      flex-shrink: 0;
+    }
+    
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+      font-size: 11px;
+    }
+    
+    .stat-label {
+      color: #666;
+    }
+    
+    .stat-value {
+      font-weight: 600;
+      color: #4c6ef5;
+    }
+    
+    .requests-container {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .section-header {
+      padding: 10px 16px;
+      background: #fff;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    
+    .section-header h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .requests-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #666;
+    }
+    
+    .empty-state p {
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+    
+    .hint {
+      font-size: 11px;
+      color: #999;
+    }
+    
+    .request-item {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 4px;
+      padding: 8px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 11px;
+    }
+    
+    .request-item:hover {
+      background: #e9ecef;
+      border-color: #4c6ef5;
+      transform: translateY(-1px);
+    }
+    
+    .request-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    
+    .method {
+      display: inline-block;
+      padding: 1px 4px;
+      border-radius: 2px;
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: white;
+    }
+    
+    .method.get { background: #28a745; }
+    .method.post { background: #007bff; }
+    .method.put { background: #ffc107; color: #333; }
+    .method.delete { background: #dc3545; }
+    .method.patch { background: #6f42c1; }
+    
+    .url {
+      flex: 1;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 10px;
+      color: #495057;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .time {
+      font-size: 9px;
+      color: #868e96;
+    }
+    
+    .request-meta {
+      display: flex;
+      gap: 8px;
+      font-size: 9px;
+      color: #666;
+    }
+    
+    .element-info {
+      background: #fff3cd;
+      padding: 1px 4px;
+      border-radius: 2px;
+      font-family: monospace;
+    }
+    
+    .delay-info {
+      color: #28a745;
+      font-weight: 500;
+    }
+    
+    /* 滚动条样式 */
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 2px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+    }
+    
+    .modal-content {
+      background: white;
+      margin: 5% auto;
+      padding: 0;
+      border-radius: 6px;
+      width: 90%;
+      max-width: 500px;
+      max-height: 70vh;
+      overflow: hidden;
+    }
+    
+    .modal-header {
+      background: #f8f9fa;
+      padding: 12px 16px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .modal-header h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      color: #666;
+      padding: 0;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 3px;
+      transition: all 0.2s;
+    }
+    
+    .close-btn:hover {
+      background: #e9ecef;
+      color: #333;
+    }
+    
+    .modal-body {
+      padding: 16px;
+      max-height: 50vh;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+    
+    .info-group {
+      display: flex;
+      margin-bottom: 8px;
+      align-items: flex-start;
+    }
+    
+    .info-label {
+      font-weight: 600;
+      color: #495057;
+      width: 60px;
+      flex-shrink: 0;
+      font-size: 11px;
+    }
+    
+    .info-value {
+      flex: 1;
+      word-break: break-all;
+      font-size: 11px;
+    }
+    
+    .data-content {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 4px;
+      padding: 12px;
+      margin-top: 8px;
+      max-height: 200px;
+      overflow: auto;
+    }
+    
+    .data-content pre {
+      margin: 0;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 10px;
+      line-height: 1.4;
+      color: #495057;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    
+    .copy-btn {
+      margin-top: 8px;
+      padding: 4px 8px;
+      background: #17a2b8;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    
+    .copy-btn:hover {
+      background: #138496;
+    }
+  </style>
 </head>
 <body>
-  <div class="app-container">
+  <div class="container">
     <div class="header">
-      <div class="controls">
-        <button id="startBtn" class="btn btn-primary">开始监听</button>
-        <button id="stopBtn" class="btn btn-secondary" disabled>停止监听</button>
-        <button id="clearBtn" class="btn btn-danger">清空</button>
+      <h1>API请求捕获器</h1>
+      <div class="status" id="status">
+        <div class="status-dot" id="statusDot"></div>
+        <span class="status-text" id="statusText">未监听</span>
       </div>
     </div>
     
-    <div class="main-content">
+    <div class="controls">
+      <button id="startBtn" class="btn btn-primary">开始监听</button>
+      <button id="stopBtn" class="btn btn-secondary" disabled>停止监听</button>
+      <button id="clearBtn" class="btn btn-danger">清空记录</button>
+    </div>
+    
+    <div class="stats">
+      <div class="stat-row">
+        <span class="stat-label">已捕获请求:</span>
+        <span class="stat-value" id="requestCount">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">当前标签页:</span>
+        <span class="stat-value" id="activeTab">-</span>
+      </div>
+    </div>
+    
+    <div class="requests-container">
+      <div class="section-header">
+        <h3>捕获的请求</h3>
+        <button id="refreshBtn" class="btn btn-secondary" style="flex: none; padding: 4px 8px; font-size: 11px;">刷新</button>
+      </div>
+      
       <div id="requestsList" class="requests-list">
         <div class="empty-state">
           <p>暂无捕获的请求</p>
+          <p class="hint">点击"开始监听"后，在网页上点击按钮即可捕获API请求</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 请求详情模态框 -->
+  <div id="requestModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>请求详情</h3>
+        <button class="close-btn" id="closeModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="request-info">
+          <div class="info-group">
+            <span class="info-label">方法:</span>
+            <span class="info-value" id="modalMethod"></span>
+          </div>
+          <div class="info-group">
+            <span class="info-label">URL:</span>
+            <span class="info-value" id="modalUrl"></span>
+          </div>
+          <div class="info-group">
+            <span class="info-label">时间:</span>
+            <span class="info-value" id="modalTime"></span>
+          </div>
+          <div class="info-group">
+            <span class="info-label">元素:</span>
+            <span class="info-value" id="modalElement"></span>
+          </div>
+          <div class="info-group">
+            <span class="info-label">延迟:</span>
+            <span class="info-value" id="modalDelay"></span>
+          </div>
+        </div>
+        
+        <div class="request-data">
+          <strong>请求参数:</strong>
+          <div class="data-content">
+            <pre id="modalData"></pre>
+          </div>
+          <button id="copyDataBtn" class="copy-btn">复制参数</button>
         </div>
       </div>
     </div>
