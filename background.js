@@ -128,6 +128,11 @@ function findMatchingClick(requestDetails) {
 function isRelevantRequest(details) {
   const url = details.url;
   
+  // 只监听POST请求
+  if (details.method !== 'POST') {
+    return false;
+  }
+  
   // 排除静态资源
   if (url.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|pdf|zip)$/i)) {
     return false;
@@ -194,11 +199,11 @@ function parseRequestBody(requestBody) {
   }
 }
 
-// 提取URL路径（不含域名）
+// 提取URL路径（不含域名和参数）
 function getUrlPath(url) {
   try {
     const urlObj = new URL(url);
-    return urlObj.pathname + urlObj.search;
+    return urlObj.pathname; // 只返回路径，不包含search参数
   } catch (e) {
     return url;
   }
@@ -229,25 +234,13 @@ chrome.webRequest.onBeforeRequest.addListener(
       // 解析请求体
       const parsedBody = parseRequestBody(details.requestBody);
       
-      // 创建捕获的请求对象
+      // 创建捕获的请求对象（简化版）
       const capturedRequest = {
         id: Date.now() + Math.random(),
         timestamp: Date.now(),
-        method: details.method,
-        url: details.url,
-        urlPath: getUrlPath(details.url),
-        type: 'webRequest',
-        requestBody: parsedBody,
-        parsedData: parsedBody,
-        headers: {}, // 将在onBeforeSendHeaders中填充
-        clickInfo: {
-          element: matchingClick.element,
-          clickTime: matchingClick.timestamp,
-          timeSinceClick: Date.now() - matchingClick.timestamp,
-          pageUrl: matchingClick.pageUrl
-        },
-        tabId: details.tabId,
-        capturedAt: new Date().toISOString()
+        url: getUrlPath(details.url), // 只保存路径，不含参数
+        requestBody: parsedBody, // 请求体参数
+        capturedAt: new Date().toLocaleTimeString() // 格式化时间
       };
       
       // 存储请求
@@ -558,8 +551,8 @@ function createCaptureWindow(sendResponse, responseTimeout = null) {
     const screenHeight = primaryDisplay.workArea.height;
     
     // 计算右上角位置
-    const windowWidth = 320;
-    const windowHeight = 360;
+    const windowWidth = 450; // 增加宽度以容纳POST请求数据
+    const windowHeight = 1800; // 增加高度为宽度4倍
     const left = screenWidth - windowWidth - 20; // 距离右边缘20px
     const top = 20; // 距离顶部20px
     
@@ -615,8 +608,8 @@ chrome.action.onClicked.addListener(async (tab) => {
     
     const primaryDisplay = displays.find(d => d.isPrimary) || displays[0];
     const screenWidth = primaryDisplay.workArea.width;
-    const windowWidth = 320;
-    const windowHeight = 360;
+    const windowWidth = 450; // 增加宽度以容纳POST请求数据
+    const windowHeight = 1800; // 增加高度为宽度4倍
     const left = screenWidth - windowWidth - 20; // 距离右边缘20px
     const top = 20; // 距离顶部20px
     

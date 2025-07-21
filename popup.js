@@ -91,7 +91,7 @@ function openCaptureWindow() {
     }).finally(() => {
       // 无论监听是否成功，都打开窗口
       const windowWidth = 320;
-      const windowHeight = 360;
+      const windowHeight = 960;
       const left = Math.max(0, window.screen.width - windowWidth - 20); // 距离右边缘20px
       const top = 20; // 距离顶部20px
       
